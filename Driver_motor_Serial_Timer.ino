@@ -43,9 +43,9 @@
 /********************************/
 //Variables
 char inputString[_MAX_COLA][10]={0};         // a string to hold incoming data
-boolean stringComplete = false, izq_endstop = false, der_endstop = false, flag_10p=false;  // whether the string is complete
+boolean stringComplete = false, izq_endstop = false, der_endstop = false, flag_10p=false, flag_delay=false;  // whether the string is complete
 boolean first_step = true, start_motor = false, started_motor = false, periodo = false,  dir_motor = 1;
-unsigned long pasos = 0, pasos_total = 0;
+unsigned long pasos = 0, pasos_total = 0, actual_time = 0, time_delay = 0;
 unsigned char vel_motor='U', indice=0, indice_string=0, indi_str_cola=0, pin=0;
 
 /********************************/
@@ -100,7 +100,6 @@ void loop()
                 pasos = 0;
                 start_motor = false;
             }
-            delay(1);
         }      
     }
     else
@@ -124,29 +123,54 @@ void fmotor_normal()
 {
     if(first_step)
     {
-        digitalWrite(_DIR, dir_motor);
-        digitalWrite(_EN, 0);
-        Timer1.initialize(1000);
-        delay(200);
-        first_step = false;
-        started_motor =true;
+        if(flag_delay)
+        {
+            actual_time = millis();
+            if((actual_time - time_delay) > 100)
+            {
+                first_step = false;
+                started_motor =true;
+                flag_delay = false;
+            }
+        }
+        else
+        {
+            digitalWrite(_DIR, dir_motor);
+            digitalWrite(_EN, 0);
+            Timer1.initialize(1000);
+            time_delay = millis();
+            flag_delay = true;
+        }
     }
     else
     {
         if(pasos == 0)
         {
-            start_motor = false;
-            first_step = true;
-            started_motor = false;
-            digitalWrite(_STEP, 0);
-            if(digitalRead(_ENDSTOP_IZQ))
-                izq_endstop = false;
-            if(digitalRead(_ENDSTOP_DER))
-                der_endstop = false;
-            Serial.println(pasos_total);
-            pasos_total=0;
-            delay(100);
-            digitalWrite(_EN, 1);
+            if(flag_delay)
+            {
+                actual_time = millis();
+                if((actual_time - time_delay) > 100)
+                {
+                    start_motor = false;
+                    first_step = true;
+                    digitalWrite(_EN, 1);
+                    flag_delay = false;
+                }
+            }
+            else
+            {
+                started_motor = false;
+                digitalWrite(_STEP, 0);
+                if(digitalRead(_ENDSTOP_IZQ))
+                    izq_endstop = false;
+                if(digitalRead(_ENDSTOP_DER))
+                    der_endstop = false;
+                Serial.println(pasos_total);
+                pasos_total=0;
+                
+                time_delay = millis();
+                flag_delay = true;
+            }
         }
     }
 }
@@ -155,32 +179,58 @@ void fmotor_ustep()
 {
     if(first_step)
     {
-        digitalWrite(_DIR, dir_motor);
-        digitalWrite(_EN, 0);
-        digitalWrite(_MOD1, 1);
-        Timer1.initialize(250);
-        delay(100);
-        pasos = pasos*4 + 1;
-        first_step = false;
-        started_motor =true;
+        if(flag_delay)
+        {
+            actual_time = millis();
+            if((actual_time - time_delay) > 100)
+            {
+                pasos = pasos*4 + 1;
+                first_step = false;
+                started_motor =true;
+                flag_delay = false;
+            }
+        }
+        else
+        {
+            digitalWrite(_DIR, dir_motor);
+            digitalWrite(_EN, 0);
+            digitalWrite(_MOD1, 1);
+            Timer1.initialize(250);
+            
+            time_delay = millis();
+            flag_delay = true;
+        }
     }
     else
     {
         if(pasos == 0)
         {
-            start_motor = false;
-            started_motor = false;
-            first_step = true;
-            digitalWrite(_STEP, 0);
-            digitalWrite(_MOD1, 0);
-            if(digitalRead(_ENDSTOP_IZQ))
-                izq_endstop = false;
-            if(digitalRead(_ENDSTOP_DER))
-                der_endstop = false;
-            Serial.println(pasos_total/4);
-            pasos_total=0;
-            delay(100);
-            digitalWrite(_EN, 1);
+            if(flag_delay)
+            {
+                actual_time = millis();
+                if((actual_time - time_delay) > 100)
+                {
+                    start_motor = false;
+                    first_step = true;
+                    digitalWrite(_EN, 1);
+                    flag_delay = false;
+                }
+            }
+            else
+            {
+                started_motor = false;
+                digitalWrite(_STEP, 0);
+                digitalWrite(_MOD1, 0);
+                if(digitalRead(_ENDSTOP_IZQ))
+                    izq_endstop = false;
+                if(digitalRead(_ENDSTOP_DER))
+                    der_endstop = false;
+                Serial.println(pasos_total/4);
+                pasos_total=0;
+                                
+                time_delay = millis();
+                flag_delay = true;
+            }
         }
     }
 }
@@ -188,35 +238,61 @@ void fmotor_ustep()
 void fmotor_fstep()
 {
     if(first_step)
-    {
-        digitalWrite(_DIR, dir_motor);
-        digitalWrite(_EN, 0);
-        digitalWrite(_MOD1, 1);
-        digitalWrite(_MOD0, 1);
-        Timer1.initialize(250);
-        delay(100);
-        pasos = pasos*8 + 1;
-        first_step = false;
-        started_motor =true;
+    {   
+        if(flag_delay)
+        {
+            actual_time = millis();
+            if((actual_time - time_delay) > 100)
+            {
+                pasos = pasos*8 + 1;
+                first_step = false;
+                started_motor =true;
+                flag_delay = false;
+            }
+        }
+        else
+        {
+            digitalWrite(_DIR, dir_motor);
+            digitalWrite(_EN, 0);
+            digitalWrite(_MOD1, 1);
+            digitalWrite(_MOD0, 1);
+            Timer1.initialize(250);
+            
+            time_delay = millis();
+            flag_delay = true;
+        }
     }
     else
     {
         if(pasos == 0)
-        {
-            start_motor = false;
-            started_motor = false;
-            first_step = true;
-            digitalWrite(_STEP, 0);
-            digitalWrite(_MOD1, 0);
-            digitalWrite(_MOD0, 0);
-            if(digitalRead(_ENDSTOP_IZQ))
-                izq_endstop = false;
-            if(digitalRead(_ENDSTOP_DER))
-                der_endstop = false;
-            Serial.println(pasos_total/8);
-            pasos_total=0;
-            delay(100);
-            digitalWrite(_EN, 1);
+        {            
+            if(flag_delay)
+            {
+                actual_time = millis();
+                if((actual_time - time_delay) > 100)
+                {
+                    start_motor = false;
+                    first_step = true;
+                    digitalWrite(_EN, 1);
+                    flag_delay = false;
+                }
+            }
+            else
+            {
+                started_motor = false;
+                digitalWrite(_STEP, 0);
+                digitalWrite(_MOD1, 0);
+                digitalWrite(_MOD0, 0);
+                if(digitalRead(_ENDSTOP_IZQ))
+                    izq_endstop = false;
+                if(digitalRead(_ENDSTOP_DER))
+                    der_endstop = false;
+                Serial.println(pasos_total/8);
+                pasos_total=0;
+                                
+                time_delay = millis();
+                flag_delay = true;
+            }
         }
     }
 }
@@ -229,7 +305,8 @@ void timerIsr()
         {
           pin=0;
           digitalWrite(_STEP, 0);
-          pasos--;
+          if(pasos > 0)
+              pasos--;
         }
         else
         {
@@ -291,6 +368,7 @@ void read_serial_queue()
     boolean lectura = true;
     int indi = 0;
 
+    pasos = 0;
     while(lectura)
     {
         caracter = inputString[indi_str_cola][indi];
